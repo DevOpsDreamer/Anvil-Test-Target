@@ -1,5 +1,5 @@
 import base64
-import pickle
+import json
 import logging
 from flask import Flask, request, jsonify, make_response
 
@@ -20,11 +20,10 @@ def update_preferences():
             return jsonify({"error": "No preference token found"}), 400
 
         try:
-            # THE VULNERABILITY: Unsafe Deserialization
-            # The app decodes the base64 string and unpickles the raw data
-            # An attacker can execute arbitrary code (RCE) during the unpickling process
+            # Decode the base64 string
             raw_data = base64.b64decode(encoded_token)
-            user_prefs = pickle.loads(raw_data)
+            # Safely load JSON data instead of using pickle
+            user_prefs = json.loads(raw_data)
             
             logging.info(f"Loaded preferences for theme: {user_prefs.get('theme')}")
             return jsonify({"status": "success", "active_theme": user_prefs.get("theme", "light")})
@@ -36,8 +35,8 @@ def update_preferences():
     # GET REQUEST: Generate the default preference cookie for new users
     default_prefs = {"theme": "dark", "layout": "grid", "animations": True}
     
-    # Serialize and encode the default preferences
-    serialized_prefs = pickle.dumps(default_prefs)
+    # Serialize and encode the default preferences using JSON
+    serialized_prefs = json.dumps(default_prefs).encode('utf-8')
     encoded_cookie = base64.b64encode(serialized_prefs).decode('utf-8')
     
     response = make_response(jsonify({"status": "Default preferences generated."}))
